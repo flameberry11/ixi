@@ -1,40 +1,38 @@
 import socket
 import threading
 
-def handle_client(client_socket):
+def handle_client(client_socket, client_address):
+    print(f"[NEW CONNECTION] {client_address} connected.")
     while True:
         try:
-            message = client_socket.recv(1024).decode('utf-8')
-            if message:
-                print(f"Message received: {message}")
-                broadcast(message, client_socket)
+            message = client_socket.recv(1024).decode()
+            if not message:
+                break
+            print(message)
+            broadcast(message, client_socket)
         except:
-            client_socket.close()
+            clients.remove(client_socket)
             break
+    print(f"[DISCONNECTION] {client_address} disconnected.")
+    client_socket.close()
 
-def broadcast(message, sender_socket):
+def broadcast(message, client_socket):
     for client in clients:
-        if client != sender_socket:
+        if client != client_socket:
             try:
-                client.send(message.encode('utf-8'))
+                client.send(message.encode())
             except:
-                client.close()
                 clients.remove(client)
 
-def main():
-    global clients
-    clients = []
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind(("0.0.0.0", 12345))
+server.listen(5)
 
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind(('0.0.0.0', 12345))  # Replace 12345 with your preferred port
-    server.listen(5)
+print("[SERVER STARTED] Waiting for connections...")
+clients = []
 
-    print("Server started. Waiting for connections...")
-    while True:
-        client_socket, client_address = server.accept()
-        print(f"Connection from {client_address}")
-        clients.append(client_socket)
-        threading.Thread(target=handle_client, args=(client_socket,)).start()
-
-if __name__ == "__main__":
-    main()
+while True:
+    client_socket, client_address = server.accept()
+    clients.append(client_socket)
+    thread = threading.Thread(target=handle_client, args=(client_socket, client_address))
+    thread.start()
